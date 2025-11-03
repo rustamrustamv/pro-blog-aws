@@ -26,5 +26,7 @@ services:
     volumes:
       # Nginx.conf is in the same folder
       - ./nginx.conf:/etc/nginx/conf.d/default.conf
+      # --- ADD THIS NEW LINE ---
+      - ../client/static:/app/client/static
     depends_on:
       - blog-app

@@ -12,8 +12,7 @@ services:
       - .env.production
     expose:
       - "5000" # Expose port 5000 *internally* to nginx
-    depends_on:
-      - db # Don't start the app until the DB is ready
+      
 
   # 2. The NGINX Web Proxy
   nginx:
@@ -31,6 +30,3 @@ services:
 # We will not run the DB in Docker, so this is commented out.
 # We use this "depends_on" trick to make the app wait
 # for an external resource (our RDS database).
-volumes:
-  db:
-    driver: local

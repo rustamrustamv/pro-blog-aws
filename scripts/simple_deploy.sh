@@ -19,7 +19,8 @@ export ECR_REPO_URL_WITH_TAG=$(jq -r .ImageURI imageDetail.json)
 
 # --- 4. STOP OLD CONTAINERS ---
 echo "Stopping old containers..."
-docker compose down
+# We pass the env var so compose can find the image name
+ECR_REPO_URL_WITH_TAG=$ECR_REPO_URL_WITH_TAG docker compose down
 
 # --- 5. GET SECRETS ---
 echo "Fetching secrets from AWS..."
@@ -33,7 +34,8 @@ echo "DATABASE_URL=${DATABASE_URL}" >> .env.production
 
 # --- 7. START NEW CONTAINERS ---
 echo "Starting new containers with docker compose..."
-docker compose up -d
+# We pass the env var to 'up' as well
+ECR_REPO_URL_WITH_TAG=$ECR_REPO_URL_WITH_TAG docker compose up -d
 
 # --- 8. VALIDATE ---
 echo "Waiting 10 seconds for app to start..."

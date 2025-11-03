@@ -83,33 +83,29 @@ jobs:
             # 2. Go to the app directory
             cd $APP_DIR
 
-            # 3. FIX PERMISSIONS (Fixes "Permission denied")
-            #    We must run this *after* we 'cd' into the directory.
-            echo "Fixing directory permissions..."
-            sudo chown -R $EC2_USERNAME:$EC2_USERNAME .
-
-            # 4. FIX ECR LOGIN (Fixes "no basic auth credentials")
+            # 3. FIX ECR LOGIN
             echo "Logging in to ECR on the server..."
             aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin $ECR_REGISTRY
 
-            # 5. Get secrets from AWS Secrets Manager
+            # 4. Get secrets from AWS Secrets Manager
             echo "Fetching secrets from AWS..."
             SECRET_KEY=$(aws secretsmanager get-secret-value --secret-id pro-blog/secret-key-v2 --query SecretString --output text --region ${{ env.AWS_REGION }})
             DATABASE_URL=$(aws secretsmanager get-secret-value --secret-id pro-blog/database-url-v2 --query SecretString --output text --region ${{ env.AWS_REGION }})
 
-            # 6. Create the .env.production file (will work now)
+            # 5. CREATE .env.production FILE (THE FIX for "Permission denied")
+            #    We use 'sudo tee' to write the file as the root user, bypassing permissions.
             echo "Creating .env.production file..."
-            echo "SECRET_KEY=${SECRET_KEY}" > .env.production
-            echo "DATABASE_URL=${DATABASE_URL}" >> .env.production
+            echo "SECRET_KEY=${SECRET_KEY}" | sudo tee .env.production
+            echo "DATABASE_URL=${DATABASE_URL}" | sudo tee -a .env.production
 
-            # 7. Stop and remove old containers
+            # 6. Stop and remove old containers (will work now)
             echo "Stopping old containers..."
             docker compose down || true
 
-            # 8. Pull the new image (will work now)
+            # 7. Pull the new image (will work now)
             echo "Pulling new image from ECR..."
             docker pull $ECR_REPO_URL_WITH_TAG
 
-            # 9. Start the new containers (will work now)
+            # 8. Start the new containers (will work now)
             echo "Starting new containers..."
             docker compose up -d

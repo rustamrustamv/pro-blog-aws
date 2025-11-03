@@ -7,12 +7,13 @@ cd /home/ubuntu/pro-blog-aws || exit 1
 echo "Navigated to /home/ubuntu/pro-blog-aws"
 
 # --- 2. INSTALL DEPENDENCIES ---
+#    This installs awscli and jq (for reading the new file)
 echo "Installing awscli and jq..."
 sudo apt-get update -y
 sudo apt-get install -y awscli jq
 
 # --- 3. LOAD IMAGE URL (THE FIX) ---
-# Read the new image URI from the standard artifact file
+#    Read the new image URI from the new artifact file
 echo "Loading new image tag from imageDetail.json..."
 export ECR_REPO_URL_WITH_TAG=$(jq -r .ImageURI imageDetail.json)
 

@@ -1,0 +1,37 @@
+# appspec.yml
+version: 0.0
+os: linux
+
+# 1. Define where our application files should be copied on the server
+files:
+  - source: /
+    destination: /home/ubuntu/pro-blog-aws
+    overwrite: true
+
+# 2. Set permissions for the files
+permissions:
+  - object: /home/ubuntu/pro-blog-aws
+    pattern: "**"
+    owner: ubuntu
+    group: ubuntu
+    mode: 644
+  - object: /home/ubuntu/pro-blog-aws/scripts
+    pattern: "**"
+    owner: ubuntu
+    group: ubuntu
+    mode: 755 # Give execute permission to our scripts
+
+# 3. Define the "hooks" (scripts) to run at each stage of deployment
+hooks:
+  BeforeInstall:
+    - location: scripts/before_install.sh
+      timeout: 300
+      runas: ubuntu
+  ApplicationStart:
+    - location: scripts/application_start.sh
+      timeout: 300
+      runas: ubuntu
+  ValidateService:
+    - location: scripts/validate_service.sh
+      timeout: 60
+      runas: ubuntu

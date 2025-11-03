@@ -1,0 +1,48 @@
+# buildspec.yml
+version: 0.2
+
+phases:
+  pre_build:
+    on-failure: ABORT
+    commands:
+      - echo "Logging in to Amazon ECR..."
+      # 1. Log in to ECR
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REPO_URL
+      # 2. Define image tag (we'll use the short commit hash)
+      - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+      - export IMAGE_TAG=${COMMIT_HASH:=latest}
+
+  build:
+    on-failure: ABORT
+    commands:
+      - echo "Building Tailwind CSS..."
+      # 3. Install Node.js and build our CSS
+      - npm install
+      - npm run build:css
+      
+      - echo "Building the Docker image..."
+      # 4. Build the Docker image, tagging it with our ECR URL and commit hash
+      - docker build -t $ECR_REPO_URL:$IMAGE_TAG .
+
+  post_build:
+    on-failure: ABORT
+    commands:
+      - echo "Pushing the Docker image to ECR..."
+      # 5. Push the Docker image
+      - docker push $ECR_REPO_URL:$IMAGE_TAG
+      
+      # 6. Set up the artifact files for CodeDeploy
+      #    We pass the ECR URL and tag to the deployment scripts
+      #    by writing them into a .env file that gets zipped up.
+      - echo "ECR_REPO_URL_WITH_TAG=$ECR_REPO_URL:$IMAGE_TAG" > .env.production.codedeploy
+      - echo "Writing artifact files..."
+
+# 7. Package up all files needed for deployment
+artifacts:
+  files:
+    - 'appspec.yml'
+    - 'docker-compose.yml'
+    - 'nginx.conf'
+    - '.env.production.codedeploy'
+    - 'scripts/*'
+  discard-paths: yes

@@ -1,0 +1,36 @@
+# docker-compose.yml
+version: '3.8'
+
+services:
+  # 1. Our Python Blog Application
+  blog-app:
+    image: ${ECR_REPO_URL_WITH_TAG} # This variable will be set by our pipeline
+    container_name: blog-app
+    restart: always
+    # Pass in the secrets as environment variables
+    env_file:
+      - .env.production
+    expose:
+      - "5000" # Expose port 5000 *internally* to nginx
+    depends_on:
+      - db # Don't start the app until the DB is ready
+
+  # 2. The NGINX Web Proxy
+  nginx:
+    image: nginx:latest
+    container_name: nginx-proxy
+    restart: always
+    ports:
+      - "80:80" # Map host port 80 to container port 80
+    # Mount our custom NGINX config file
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - blog-app # Don't start nginx until the app is ready
+
+# We will not run the DB in Docker, so this is commented out.
+# We use this "depends_on" trick to make the app wait
+# for an external resource (our RDS database).
+volumes:
+  db:
+    driver: local

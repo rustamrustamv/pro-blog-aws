@@ -4,23 +4,16 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Wellness Journal</title>
-    {{ url_for('static', filename='styles.css') }}
+    {{ url_for(
 </head>
 <body class="bg-gray-100 text-gray-800">
 
 <!-- ✅ Navigation -->
 <nav class="bg-white shadow-md">
     <div class="max-w-6xl mx-auto px-4 flex justify-between items-center h-16">
-        <a href="{{ url_for('index') }}" class="text-2xl font-bold text-green-600">Wellness Journal</a>
-        <div class="space-x-4">
-            <a href="{{ url_for('index') }}" class="hover:text-green-600">Home</a>
-            <a href="{{ url_for('about') }}" class="text-gray-600 hover:text-green-600">About</a>
-            {% if current_user.is_authenticated %}
-                <a href="{{ url_for('admin') }}" class="text-gray-600 hover:text-green-600">Admin</a>
-                <a href="{{ url_for('logout') }}" class="text-gray-600 hover:text-green-600">Logout</a>
-            {% else %}
-                <a href="{{ url_for('login') }}" class="text-gray-600 hover:text-green-600">Login</a>
-            {% endif %}
+        <a href="{{ url_for('index') }}" class="text-2xl font-bold text-green-600">Wellness href="{{ url_for('index') }}" class="text-gray-r('about') }}" classef="{{ url_for('resources') }}" class="text-grayer.is_authenticated %}
+                <a hreffor(Admin</a>
+                <a href="{{ url_for('logout') }}" class="text-gray-600 hover:text-green-600l_for('login') }}" class="f %}
         </div>
     </div>
 </nav>

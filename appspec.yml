@@ -2,52 +2,43 @@
 version: 0.0
 os: linux
 
-# 1. Define where our application files should be copied on the server
 files:
   - source: /
     destination: /home/ubuntu/pro-blog-aws
     overwrite: true
 
-# 2. Set permissions for the files
 permissions:
   - object: /home/ubuntu/pro-blog-aws
     owner: ubuntu
     group: ubuntu
-    mode: 755     # Give 755 (execute) to the root folder
+    mode: 755
     type:
       - directory
-      
   - object: /home/ubuntu/pro-blog-aws
     owner: ubuntu
     group: ubuntu
-    mode: 644     # Give 644 (read) to all files
+    mode: 644
     type:
       - file
-      
   - object: /home/ubuntu/pro-blog-aws/scripts
     owner: ubuntu
     group: ubuntu
-    mode: 755     # Give 755 (execute) to the scripts folder
+    mode: 755
     type:
       - directory
-      
   - object: /home/ubuntu/pro-blog-aws/scripts
     pattern: "**"
     owner: ubuntu
     group: ubuntu
-    mode: 755     # Give 755 (execute) to all scripts *inside*
+    mode: 755
     type:
       - file
 
-# 3. Define the "hooks" (scripts) to run at each stage of deployment
 hooks:
-  # THIS IS THE MOST IMPORTANT HOOK THAT WAS MISSING
   ApplicationStart:
     - location: scripts/application_start.sh
       timeout: 300
       runas: ubuntu
-      
-  # This hook validates that the ApplicationStart script worked
   ValidateService:
     - location: scripts/validate_service.sh
       timeout: 60

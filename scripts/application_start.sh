@@ -2,7 +2,7 @@
 
 # scripts/application_start.sh
 
-# Navigate to the app directory (this will now exist)
+# Navigate to the app directory
 cd /home/ubuntu/pro-blog-aws || exit 1
 
 # 1. Stop any old containers that might be running

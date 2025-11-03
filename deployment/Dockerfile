@@ -1,4 +1,4 @@
-# deployment/Dockerfile
+# deployment/Dockerfile  (Python app image)
 FROM python:3.12-slim AS app
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -6,17 +6,20 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# OS deps (include libpq-dev only if you use psycopg2/PG)
 RUN apt-get update \
  && apt-get install -y --no-install-recommends libpq-dev build-essential \
  && rm -rf /var/lib/apt/lists/*
 
-# Python deps
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# App code & entrypoint
+# App code
 COPY app/ ./app
+
+# 👇 ADD THIS: copy your Jinja templates into the default Flask location
+COPY client/templates/ ./app/templates/
+
+# Entrypoint
 COPY deployment/entrypoint.sh .
 RUN chmod +x entrypoint.sh
 

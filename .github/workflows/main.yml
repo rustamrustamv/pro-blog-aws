@@ -74,7 +74,7 @@ jobs:
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ env.EC2_SERVER_IP }}
-          username: ${{ env.EC2_USERNAME }}S
+          username: ${{ env.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             # This is the script that runs on our server

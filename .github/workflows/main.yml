@@ -1,13 +1,10 @@
 # .github/workflows/main.yml
 name: Deploy Pro Blog to AWS
-
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
 
 env:
-  # Get variables from our GitHub Secrets
   AWS_REGION: ${{ secrets.AWS_REGION }}
   ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY_NAME }}
   EC2_SERVER_IP: ${{ secrets.EC2_SERVER_IP }}
@@ -16,13 +13,13 @@ env:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    
+
     steps:
-      # 1. Check out the repository code
+      # 1) Checkout
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 2. Configure AWS credentials
+      # 2) Configure AWS credentials on runner (for ECR push)
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -30,58 +27,92 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      # 3. Log in to Amazon ECR
+      # 3) ECR login (runner)
       - name: Log in to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      # 4. Build, tag, and push Docker image
+      # 4) Build & push image
       - name: Build, tag, and push image
         id: build-image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          # A. Build the Docker image (it now builds CSS inside)
+          set -euo pipefail
           echo "Building Docker image..."
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f deployment/Dockerfile .
+          docker build -t "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" -f deployment/Dockerfile .
 
-          # B. Push the Docker image
           echo "Pushing Docker image..."
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
 
-          # C. Output the full image URI for the deploy step
-          echo "IMAGE_URI=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+          echo "IMAGE_URI=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> "$GITHUB_OUTPUT"
 
-      # 5. Copy configuration files to the EC2 server
+      # 5) Copy compose/nginx to EC2
       - name: Copy files to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ env.EC2_SERVER_IP }}
           username: ${{ env.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          # --- THIS IS THE FIX ---
-          # Copy the files from their new 'deployment' folder
           source: "deployment/docker-compose.yml,deployment/nginx.conf"
           target: "/home/ubuntu/pro-blog-aws"
 
-
-      - name: Install AWS CLI and Docker
-        uses: appleboy/ssh-action@v1.0.3 # We use the SSH action to run these commands on the EC2 server
+      # 6) Prepare EC2 (idempotent install of AWS CLI, Docker, Compose v2)
+      - name: Prepare EC2 (AWS CLI, Docker, Compose v2)
+        uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ env.EC2_SERVER_IP }}
           username: ${{ env.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            # 1. Update and Install Docker Compose (using the simpler name)
-            sudo apt-get update -y
-            sudo apt-get install -y awscli docker-compose
+            set -euo pipefail
 
-            # 2. Add ubuntu user to docker group (required for execution)
-            sudo usermod -aG docker ubuntu || true
+            # AWS CLI v2
+            if ! command -v aws >/dev/null 2>&1; then
+              echo "Installing AWS CLI v2..."
+              sudo apt-get update -y
+              sudo apt-get install -y unzip curl
+              curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+              unzip -q awscliv2.zip
+              sudo ./aws/install
+              rm -rf aws awscliv2.zip
+            fi
+            aws --version || true
 
+            # Docker Engine
+            if ! command -v docker >/dev/null 2>&1; then
+              echo "Installing Docker Engine..."
+              sudo apt-get update -y
+              sudo apt-get install -y docker.io
+              sudo systemctl enable --now docker
+            fi
+            docker --version || true
 
-      # 6. Deploy to EC2 by running the script
+            # Docker Compose v2 plugin
+            if ! docker compose version >/dev/null 2>&1; then
+              echo "Installing Docker Compose v2 plugin..."
+              sudo mkdir -p /usr/lib/docker/cli-plugins
+              ARCH=$(uname -m)
+              if [ "$ARCH" = "x86_64" ] || [ "$ARCH" = "amd64" ]; then
+                URL="https://github.com/docker/compose/releases/download/v2.29.7/docker-compose-linux-x86_64"
+              else
+                URL="https://github.com/docker/compose/releases/download/v2.29.7/docker-compose-linux-aarch64"
+              fi
+              sudo curl -fsSL "$URL" -o /usr/lib/docker/cli-plugins/docker-compose
+              sudo chmod +x /usr/lib/docker/cli-plugins/docker-compose
+            fi
+            docker compose version || true
+
+            # Docker group for ubuntu (takes effect next login; we still use sudo in this run)
+            if ! id -nG ubuntu | grep -qw docker; then
+              sudo usermod -aG docker ubuntu
+            fi
+            # Ensure app directory ownership
+            sudo mkdir -p /home/ubuntu/pro-blog-aws
+            sudo chown -R ubuntu:ubuntu /home/ubuntu/pro-blog-aws
+
+      # 7) Deploy to EC2
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -89,44 +120,37 @@ jobs:
           username: ${{ env.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            # --- PRE-DEPLOYMENT SETUP (REQUIRED ON NEW SERVER) ---
-            echo "--- Installing Dependencies on EC2 ---"
-            sudo apt-get update -y
-            sudo apt-get install -y awscli jq docker.io docker-compose-plugin
-
-            # Add user to docker group
-            sudo usermod -aG docker ubuntu || true
-
-            # --- START DEPLOYMENT SCRIPT ---
-            export ECR_REPO_URL_WITH_TAG=${{ steps.build-image.outputs.IMAGE_URI }}
+            set -euo pipefail
+            export ECR_REPO_URL_WITH_TAG='${{ steps.build-image.outputs.IMAGE_URI }}'
             export APP_DIR="/home/ubuntu/pro-blog-aws"
-            export ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
+            export ECR_REGISTRY='${{ steps.login-ecr.outputs.registry }}'
+            export AWS_REGION='${{ env.AWS_REGION }}'
 
-            cd $APP_DIR
+            cd "$APP_DIR"
 
             echo "Fixing directory permissions..."
-            sudo chown -R $EC2_USERNAME:$EC2_USERNAME .
+            sudo chown -R "$USER":"$USER" .
 
             echo "Logging in to ECR on the server..."
-            # Now these commands will work
-            aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin $ECR_REGISTRY
+            aws ecr get-login-password --region "$AWS_REGION" | sudo docker login --username AWS --password-stdin "$ECR_REGISTRY"
 
             echo "Fetching secrets from AWS..."
-            SECRET_KEY=$(aws secretsmanager get-secret-value --secret-id pro-blog/secret-key-v3 --query SecretString --output text --region ${{ env.AWS_REGION }})
-            DATABASE_URL=$(aws secretsmanager get-secret-value --secret-id pro-blog/database-url-v3 --query SecretString --output text --region ${{ env.AWS_REGION }})
+            SECRET_KEY=$(aws secretsmanager get-secret-value --secret-id pro-blog/secret-key-v3 --query SecretString --output text --region "$AWS_REGION")
+            DATABASE_URL=$(aws secretsmanager get-secret-value --secret-id pro-blog/database-url-v3 --query SecretString --output text --region "$AWS_REGION")
 
-            echo "Creating .env.production file..."
-            echo "SECRET_KEY=${SECRET_KEY}" | sudo tee .env.production
-            echo "DATABASE_URL=${DATABASE_URL}" | sudo tee -a .env.production
+            echo "Writing .env.production..."
+            sudo sh -c 'cat > .env.production <<EOF
+            SECRET_KEY='"$SECRET_KEY"'
+            DATABASE_URL='"$DATABASE_URL"'
+            EOF'
 
-            # 7. Stop and remove old containers (Fixing the flags here too)
             echo "Stopping old containers..."
             sudo docker compose down --remove-orphans || true
 
-            # 8. Pull the new image (This is just fine)
             echo "Pulling new image from ECR..."
-            sudo docker pull $ECR_REPO_URL_WITH_TAG
+            sudo docker pull "$ECR_REPO_URL_WITH_TAG"
 
-            # 9. Start the new containers (The final fix!)
             echo "Starting new containers..."
-            sudo docker compose up --detach # <-- REPLACED -d with --detach
+            sudo docker compose up --detach
+
+            echo "Deploy complete."

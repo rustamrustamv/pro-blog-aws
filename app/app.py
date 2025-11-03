@@ -167,6 +167,12 @@ def edit(post_id):
 
     return render_template('create_edit_post.html', title='Edit Post', form=form)
 
+@app.route('/post/<int:post_id>')
+def post_detail(post_id):
+    """Shows the full content of a single post."""
+    post = Post.query.get_or_404(post_id)
+    return render_template('post_detail.html', post=post)
+
 @app.route('/post/<int:post_id>/delete', methods=['POST'])
 @login_required
 def delete(post_id):

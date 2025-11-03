@@ -16,9 +16,8 @@ from wtforms.validators import DataRequired
 
 # Get the absolute path to the project root
 project_root = os.path.abspath(os.path.dirname(__file__))  # /app/app
-
 app = Flask(__name__,
-            template_folder=os.path.join(project_root, 'templates'),
+            template_folder=os.path.join(project_root, '..', 'client', 'templates'),
             static_folder=os.path.join(project_root, '..', 'client', 'static'))
 
 

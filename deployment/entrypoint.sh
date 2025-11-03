@@ -1,17 +1,17 @@
 #!/bin/sh
 set -e # Stop script on any error
 
-# 1. Run the database creation script
-#    (We must 'cd' into the app folder first)
+# We are in the WORKDIR /app
+
+# 1. Add the current directory to the Python path
+#    This lets Python find the 'app' package.
+export PYTHONPATH=$PYTHONPATH:/app
+
+# 2. Run the database creation script *as a module*
 echo "Initializing database..."
-cd /app/app
-python3 create_db.py
+python3 -m app.create_db
 echo "Database initialization complete."
 
-# 2. Go back to the app root
-cd /app
-
-# 3. Start the Gunicorn web server
-#    (We must tell it the app is at 'app.app:app')
+# 3. Start the Gunicorn web server *as a module*
 echo "Starting web server..."
 exec gunicorn --bind 0.0.0.0:5000 app.app:app

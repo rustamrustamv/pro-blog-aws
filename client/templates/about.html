@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class="text-3xl font-bold mb-6 text-blue-700">The Architect: Rustam Rustamov</h1>
+<div class="bg-white p-6 rounded-lg shadow-md space-y-6">
+    <p class="text-xl font-medium text-gray-700">
+        I am a results-driven IT professional with 5+ years of experience across application reliability, automation, and cloud support, focused on transitioning into DevOps/SRE roles. This blog serves as my live portfolio, demonstrating hands-on expertise with cutting-edge tools.
+    </p>
+
+    <h2 class="text-2xl font-semibold border-b pb-2 mb-4">Core Competencies</h2>
+    <div class="grid grid-cols-2 gap-4">
+        <div class="bg-blue-50 p-3 rounded-lg">
+            <p class="font-bold text-lg text-blue-800">Cloud Infrastructure (IaC)</p>
+            <ul class="list-disc list-inside text-sm">
+                <li>AWS (EC2, RDS, ECR, IAM)</li>
+                <li>Azure (AZ-104 Certified, AKS, VNet)</li>
+                <li>Terraform for all provisioning</li>
+            </ul>
+        </div>
+        <div class="bg-green-50 p-3 rounded-lg">
+            <p class="font-bold text-lg text-green-800">CI/CD & Automation</p>
+            <ul class="list-disc list-inside text-sm">
+                <li>GitHub Actions (Complex Multi-stage Pipelines)</li>
+                <li>Docker, Containerization, Docker Compose</li>
+                <li>Ansible for Configuration Management</li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}

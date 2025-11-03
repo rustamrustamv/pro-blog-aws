@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block content %}
+<h1 class="text-3xl font-bold mb-6 text-blue-700">Project Technology Stack</h1>
+<div class="bg-white p-6 rounded-lg shadow-md">
+    <p class="text-gray-600 mb-6">Every component of this site is documented as a learning exercise in building scalable, secure cloud applications.</p>
+
+    <h2 class="text-2xl font-semibold border-b pb-2 mb-4">Backend & Deployment</h2>
+    <ul class="list-disc list-inside space-y-2">
+        <li>**Infrastructure as Code:** Terraform (used for AWS RDS, EC2, ECR, VPC).</li>
+        <li>**CI/CD:** GitHub Actions (custom SSH deployment workflow).</li>
+        <li>**Compute:** AWS EC2 (for host) running Docker Compose.</li>
+        <li>**Containerization:** Docker / NGINX (as a reverse proxy).</li>
+        <li>**Secrets Management:** AWS Secrets Manager (used for DB credentials).</li>
+    </ul>
+
+    <h2 class="text-2xl font-semibold border-b pb-2 mt-8 mb-4">Application Stack</h2>
+    <ul class="list-disc list-inside space-y-2">
+        <li>**Language:** Python 3.11</li>
+        <li>**Framework:** Flask</li>
+        <li>**Database:** PostgreSQL (AWS RDS)</li>
+        <li>**Authentication:** Flask-Login, Flask-Bcrypt (Secure hashing).</li>
+        <li>**Styling:** Tailwind CSS (built into the Docker image via multi-stage build).</li>
+    </ul>
+</div>
+{% endblock %}

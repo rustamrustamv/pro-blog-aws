@@ -81,6 +81,15 @@ def index():
     posts = Post.query.order_by(Post.id.desc()).all()
     return render_template('index.html', posts=posts)
 
+@app.route('/about')
+def about():
+    return render_template('about.html')
+
+@app.route('/resources')
+def resources():
+    return render_template('resources.html')
+
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     """Handles the user login page."""

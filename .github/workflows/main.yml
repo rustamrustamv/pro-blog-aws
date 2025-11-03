@@ -119,11 +119,14 @@ jobs:
             echo "SECRET_KEY=${SECRET_KEY}" | sudo tee .env.production
             echo "DATABASE_URL=${DATABASE_URL}" | sudo tee -a .env.production
 
+            # 7. Stop and remove old containers (Fixing the flags here too)
             echo "Stopping old containers..."
-            docker compose down || true
+            sudo docker compose down --remove-orphans || true
 
+            # 8. Pull the new image (This is just fine)
             echo "Pulling new image from ECR..."
-            docker pull $ECR_REPO_URL_WITH_TAG
+            sudo docker pull $ECR_REPO_URL_WITH_TAG
 
+            # 9. Start the new containers (The final fix!)
             echo "Starting new containers..."
-            docker compose up -d
+            sudo docker compose up --detach # <-- REPLACED -d with --detach

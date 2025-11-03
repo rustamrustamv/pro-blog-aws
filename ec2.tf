@@ -72,6 +72,19 @@ resource "aws_iam_instance_profile" "ec2_instance_profile" {
   role = aws_iam_role.ec2_instance_role.name
 }
 
+#  Allows CodeDeploy to find and manage this instance
+resource "aws_iam_role_policy_attachment" "codedeploy_ec2" {
+  role       = aws_iam_role.ec2_instance_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforAWSCodeDeploy"
+}
+
+# Allows the AWS Systems Manager (SSM) agent to work,
+# which is how CodeDeploy communicates.
+resource "aws_iam_role_policy_attachment" "ssm_policy" {
+  role       = aws_iam_role.ec2_instance_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
 # 4. Create the EC2 Instance
 resource "aws_instance" "blog_server" {
   # Ubuntu 22.04 LTS in us-east-1

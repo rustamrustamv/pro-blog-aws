@@ -1,0 +1,62 @@
+# .github/workflows/main.yml
+
+name: Deploy Pro Blog to AWS
+
+# 1. Trigger this workflow on every push to the 'main' branch
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      # 2. Check out the repository code
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # 3. Configure AWS credentials
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      # 4. Log in to Amazon ECR
+      - name: Log in to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+        with:
+          registry-uris: ${{ secrets.ECR_REPO_URL }}
+
+      # 5. Build, tag, and push Docker image to ECR
+      - name: Build, tag, and push image to ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: ${{ secrets.ECR_REPO_URL }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          # A. Build the Tailwind CSS
+          echo "Building Tailwind CSS..."
+          npm install
+          npm run build:css
+          
+          # B. Build the Docker image
+          echo "Building Docker image..."
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          
+          # C. Push the Docker image
+          echo "Pushing Docker image..."
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+      # 6. Create a new deployment in CodeDeploy
+      - name: Create new CodeDeploy deployment
+        id: deploy
+        run: |
+          aws deploy create-deployment \
+            --application-name ${{ secrets.CODEDEPLOY_APP_NAME }} \
+            --deployment-group-name ${{ secrets.CODEDEPLOY_DEPLOYMENT_GROUP }} \
+            --revision '{"revisionType": "GitHub", "gitHubLocation": {"repository": "${{ github.repository }}", "commitId": "${{ github.sha }}"}}'

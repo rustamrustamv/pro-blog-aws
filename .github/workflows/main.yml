@@ -164,6 +164,7 @@ jobs:
             fi
 
       # 8) Deploy to EC2
+      
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -197,6 +198,15 @@ jobs:
             DATABASE_URL='"$DATABASE_URL"'
             EOF'
             sudo install -m 600 .env.production .env
+
+            # >>> NEW: add image variables to .env so Compose can substitute them
+            sudo tee -a .env >/dev/null <<EOF
+            ECR_REPO_URL_WITH_TAG=$ECR_REPO_URL_WITH_TAG
+            NGINX_IMAGE_URI=$NGINX_IMAGE_URI
+            EOF
+
+            echo "Verify image variables are present in .env:"
+            grep -E '^(ECR_REPO_URL_WITH_TAG|NGINX_IMAGE_URI)=' .env || { echo "Missing image vars in .env"; exit 1; }
 
             echo "Down old stack..."
             sudo docker compose down --remove-orphans || true

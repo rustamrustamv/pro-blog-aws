@@ -1,5 +1,4 @@
 # .github/workflows/main.yml
-
 name: Deploy Pro Blog to AWS
 
 on:
@@ -12,7 +11,7 @@ env:
   AWS_REGION: ${{ secrets.AWS_REGION }}
   ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY_NAME }}
   EC2_SERVER_IP: ${{ secrets.EC2_SERVER_IP }}
-  EC2_USERNAME: ubuntu # This is the user on our server
+  EC2_USERNAME: ubuntu
 
 jobs:
   build-and-deploy:
@@ -44,16 +43,13 @@ jobs:
           IMAGE_TAG: ${{ github.sha }}
         run: |
           # A. Build the Tailwind CSS
-          echo "Building Tailwind CSS..."
           npm install
           npm run build:css
           
           # B. Build the Docker image
-          echo "Building Docker image..."
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
           
           # C. Push the Docker image
-          echo "Pushing Docker image..."
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           
           # D. Output the full image URI for the deploy step
@@ -78,32 +74,41 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             # This is the script that runs on our server
-
+            
             # 1. Set variables
             export ECR_REPO_URL_WITH_TAG=${{ steps.build-image.outputs.IMAGE_URI }}
             export APP_DIR="/home/ubuntu/pro-blog-aws"
+            export ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
 
             # 2. Go to the app directory
             cd $APP_DIR
-
-            # 3. Get secrets from AWS Secrets Manager
+            
+            # 3. FIX PERMISSIONS (Fixes "Permission denied")
+            echo "Fixing directory permissions..."
+            sudo chown -R $EC2_USERNAME:$EC2_USERNAME $APP_DIR
+            
+            # 4. FIX ECR LOGIN (Fixes "no basic auth credentials")
+            echo "Logging in to ECR on the server..."
+            aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin $ECR_REGISTRY
+            
+            # 5. Get secrets from AWS Secrets Manager
             echo "Fetching secrets from AWS..."
             SECRET_KEY=$(aws secretsmanager get-secret-value --secret-id pro-blog/secret-key-v2 --query SecretString --output text --region ${{ env.AWS_REGION }})
             DATABASE_URL=$(aws secretsmanager get-secret-value --secret-id pro-blog/database-url-v2 --query SecretString --output text --region ${{ env.AWS_REGION }})
-
-            # 4. Create the .env.production file
+            
+            # 6. Create the .env.production file (will work now)
             echo "Creating .env.production file..."
             echo "SECRET_KEY=${SECRET_KEY}" > .env.production
             echo "DATABASE_URL=${DATABASE_URL}" >> .env.production
-
-            # 5. Stop and remove old containers
+            
+            # 7. Stop and remove old containers
             echo "Stopping old containers..."
             docker compose down || true
-
-            # 6. Pull the new image
+            
+            # 8. Pull the new image (will work now)
             echo "Pulling new image from ECR..."
             docker pull $ECR_REPO_URL_WITH_TAG
-
-            # 7. Start the new containers
+            
+            # 9. Start the new containers (will work now)
             echo "Starting new containers..."
             docker compose up -d

@@ -17,7 +17,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY app/ ./app
 
 # 👇 ADD THIS: copy your Jinja templates into the default Flask location
-COPY client/templates/ ./app/templates/
+COPY client ./client
 
 # Entrypoint
 COPY deployment/entrypoint.sh .

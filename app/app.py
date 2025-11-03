@@ -56,6 +56,7 @@ class Post(db.Model):
     content = db.Column(db.Text, nullable=False)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     author = db.relationship('User', backref=db.backref('posts', lazy=True))
+    image = db.Column(db.String(200), nullable=True)
 
     def __repr__(self):
         return f"Post('{self.title}')"
@@ -73,6 +74,7 @@ class PostForm(FlaskForm):
     title = StringField('Title', validators=[DataRequired()])
     content = TextAreaField('Content', validators=[DataRequired()])
     submit = SubmitField('Save Post')
+    image = StringField('Image Filename', validators=[DataRequired()])
 # --- Routes (Webpages) ---
 
 @app.route('/')
@@ -133,7 +135,8 @@ def create():
     if form.validate_on_submit():
         # Create a new post object, linking it to the logged-in user
         post = Post(title=form.title.data, 
-                    content=form.content.data, 
+                    content=form.content.data,
+                    image=form.image.data, 
                     author=current_user)
         db.session.add(post)
         db.session.commit()

@@ -4,18 +4,21 @@
 # Use an official Node.js image
 FROM node:20-slim as frontend-builder
 
+# Set the working directory
 WORKDIR /frontend
 
-# Copy all the Tailwind/NPM config files
+# Copy the package.json files
 COPY package.json .
 COPY package-lock.json .
-COPY client/tailwind.config.js .
-COPY client/input.css ./client/input.css
 
-# Copy the templates to be scanned by Tailwind
-COPY client/templates/ ./client/templates
+# Replicate the client/ folder structure *inside* the container
+# This is the critical fix
+COPY client/tailwind.config.js ./client/
+COPY client/input.css ./client/
+COPY client/templates/ ./client/templates/
 
 # Install dependencies and build the final output.css file
+# The 'npm run build:css' script will now find all the files
 RUN npm install
 RUN npm run build:css
 
@@ -46,6 +49,7 @@ COPY deployment/docker-compose.yml .
 
 # --- THIS IS THE MAGIC ---
 # Copy the *final CSS file* from the 'frontend-builder' stage
+# The path is /frontend/client/static/output.css
 COPY --from=frontend-builder /frontend/client/static/output.css ./client/static/output.css
 
 # Copy the rest of the client files (HTML templates)

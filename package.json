@@ -1,18 +1,11 @@
 {
-  "name": "pro-blog-aws",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
   "scripts": {
-    "build:css": "tailwindcss -i ./client/input.css -o ./client/static/output.css --config ./client/tailwind.config.js",
+    "build:css": "mkdir -p ./client/static && tailwindcss -i ./client/input.css -o ./client/static/styles.css --config ./client/tailwind.config.js",
     "build": "npm run build:css"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "devDependencies": {
+    "tailwindcss": "^3.4.4",
     "autoprefixer": "^10.4.19",
-    "postcss": "^8.4.38",
-    "tailwindcss": "^3.4.4"
+    "postcss": "^8.4.38"
   }
 }

@@ -10,6 +10,7 @@ env:
   ECR_REPOSITORY_NGINX: ${{ secrets.ECR_REPOSITORY_NGINX }}    # nginx repo
   EC2_SERVER_IP: ${{ secrets.EC2_SERVER_IP }}
   EC2_USERNAME: ubuntu
+
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
@@ -19,31 +20,27 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 1) Build frontend (Tailwind) so client/static exists for nginx image
+      # 1) Build frontend (Tailwind) at repo root (package.json here)
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: "20"
 
-      - name: Build frontend assets
-        working-directory: client
+      - name: Build frontend assets (Tailwind)
         run: |
           set -euo pipefail
-          if [ -f package-lock.json ] || [ -f pnpm-lock.yaml ] || [ -f yarn.lock ]; then
-            if [ -f package-lock.json ]; then
-              npm ci
-            else
-              npm install
-            fi
+          # install deps from root package.json
+          if [ -f package-lock.json ]; then
+            npm ci
           else
             npm install
           fi
-          # Adjust to your Tailwind build script
+          # build -> produces ./client/static/output.css
           npm run build
 
-          # Ensure build output exists at client/static (adjust if your build outputs somewhere else)
-          # If your build outputs to "dist" or "build", change this accordingly and update nginx.Dockerfile COPY path.
-          test -d static || { echo "ERROR: expected 'client/static' after build. Adjust nginx.Dockerfile COPY path or build output."; ls -la; exit 1; }
+          # sanity check: make sure static exists and has some files
+          test -d client/static || { echo "ERROR: client/static not found after build"; exit 1; }
+          ls -la client/static
 
       # 2) Configure AWS credentials on runner (for ECR push)
       - name: Configure AWS Credentials
@@ -188,7 +185,6 @@ jobs:
             echo "Pull latest images..."
             sudo docker pull "$ECR_REPO_URL_WITH_TAG"   # app
             sudo docker pull "$NGINX_IMAGE_URI"         # nginx
-
             echo "Up new stack..."
             sudo docker compose up --detach
 

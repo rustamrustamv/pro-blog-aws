@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build:css": "tailwindcss -i ./client/input.css -o ./client/static/output.css --config ./client/tailwind.config.js"
+    "build:css": "tailwindcss -i ./client/input.css -o ./client/static/output.css --config ./client/tailwind.config.js",
+    "build": "npm run build:css"
   },
   "keywords": [],
   "author": "",

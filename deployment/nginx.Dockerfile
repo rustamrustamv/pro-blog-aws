@@ -1,10 +1,8 @@
-# Builds an NGINX image that includes your config + compiled static assets
-# Assumes CI compiles Tailwind assets into client/static
-
+# deployment/nginx.Dockerfile
 FROM nginx:1.27-alpine
 
-# Copy NGINX config
+# Nginx config
 COPY deployment/nginx.conf /etc/nginx/conf.d/default.conf
-# Copy pre-built static assets from repo into image
-# Ensure CI step creates client/static before this build.
+
+# Copy the static assets built by npm (output.css lives here)
 COPY client/static /app/client/static

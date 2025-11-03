@@ -19,8 +19,8 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
 app = Flask(__name__,
             # --- THIS IS THE FIX ---
-            template_folder=os.path.join(project_root, 'client', 'templates'),
-            static_folder=os.path.join(project_root, 'client', 'static')
+            template_folder='templates',
+            static_folder='../client/static'
             )
 
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY')

@@ -15,13 +15,12 @@ from wtforms.validators import DataRequired
 # --- App & Config Setup ---
 
 # Get the absolute path to the project root
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+project_root = os.path.abspath(os.path.dirname(__file__))  # /app/app
 
 app = Flask(__name__,
-            # --- THIS IS THE FIX ---
-            template_folder='templates',
-            static_folder='../client/static'
-            )
+            template_folder=os.path.join(project_root, 'templates'),
+            static_folder=os.path.join(project_root, '..', 'client', 'static'))
+
 
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY')
 # --- THIS IS THE FIX ---

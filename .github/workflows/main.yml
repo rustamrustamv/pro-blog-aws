@@ -75,12 +75,21 @@ jobs:
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
+          ECR_REPOSITORY_NGINX: ${{ env.ECR_REPOSITORY_NGINX }}
         run: |
           set -euo pipefail
+
+          if [ -z "${ECR_REPOSITORY_NGINX:-}" ]; then
+            echo "ERROR: ECR_REPOSITORY_NGINX is empty. Set the GitHub secret or env to your nginx ECR repo name."
+            exit 1
+          fi
+
           echo "Building NGINX image..."
           docker build -t "$ECR_REGISTRY/$ECR_REPOSITORY_NGINX:$IMAGE_TAG" -f deployment/nginx.Dockerfile .
+
           echo "Pushing NGINX image..."
           docker push "$ECR_REGISTRY/$ECR_REPOSITORY_NGINX:$IMAGE_TAG"
+
           echo "IMAGE_URI_NGINX=$ECR_REGISTRY/$ECR_REPOSITORY_NGINX:$IMAGE_TAG" >> "$GITHUB_OUTPUT"
 
       # 6) Copy prod compose to EC2 and rename on the fly

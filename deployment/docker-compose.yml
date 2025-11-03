@@ -1,0 +1,28 @@
+# deployment/docker-compose.yml
+
+services:
+  # 1. Our Python Blog Application
+  blog-app:
+    build:
+      context: ..         # Build from the root project folder
+      dockerfile: deployment/Dockerfile # Point to our Dockerfile
+    image: ${ECR_REPO_URL_WITH_TAG}
+    container_name: blog-app
+    restart: always
+    env_file:
+      - ../.env.production # The .env file is in the root
+    expose:
+      - "5000"
+
+  # 2. The NGINX Web Proxy
+  nginx:
+    image: nginx:latest
+    container_name: nginx-proxy
+    restart: always
+    ports:
+      - "80:80"
+    volumes:
+      # Nginx.conf is in the same folder as this compose file
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - blog-app

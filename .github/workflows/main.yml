@@ -42,14 +42,17 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          # A. Build the Tailwind CSS
+          # A. Build the Tailwind CSS (uses new paths from package.json)
+          echo "Building Tailwind CSS..."
           npm install
           npm run build:css
           
-          # B. Build the Docker image
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          # B. Build the Docker image (points to the refactored Dockerfile)
+          echo "Building Docker image..."
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f deployment/Dockerfile .
           
           # C. Push the Docker image
+          echo "Pushing Docker image..."
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           
           # D. Output the full image URI for the deploy step
@@ -62,7 +65,9 @@ jobs:
           host: ${{ env.EC2_SERVER_IP }}
           username: ${{ env.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          source: "docker-compose.yml,nginx.conf"
+          # --- THIS IS THE FIX ---
+          # Copy the files from their new 'deployment' folder
+          source: "deployment/docker-compose.yml,deployment/nginx.conf"
           target: "/home/ubuntu/pro-blog-aws"
 
       # 6. Deploy to EC2 by running the script
@@ -72,40 +77,33 @@ jobs:
           host: ${{ env.EC2_SERVER_IP }}
           username: ${{ env.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
+          # This script is unchanged and should work
           script: |
-            # This is the script that runs on our server
-
-            # 1. Set variables
             export ECR_REPO_URL_WITH_TAG=${{ steps.build-image.outputs.IMAGE_URI }}
             export APP_DIR="/home/ubuntu/pro-blog-aws"
             export ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
-
-            # 2. Go to the app directory
+            
             cd $APP_DIR
-
-            # 3. FIX ECR LOGIN
+            
+            echo "Fixing directory permissions..."
+            sudo chown -R $EC2_USERNAME:$EC2_USERNAME .
+            
             echo "Logging in to ECR on the server..."
             aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin $ECR_REGISTRY
-
-            # 4. Get secrets from AWS Secrets Manager
+            
             echo "Fetching secrets from AWS..."
             SECRET_KEY=$(aws secretsmanager get-secret-value --secret-id pro-blog/secret-key-v2 --query SecretString --output text --region ${{ env.AWS_REGION }})
             DATABASE_URL=$(aws secretsmanager get-secret-value --secret-id pro-blog/database-url-v2 --query SecretString --output text --region ${{ env.AWS_REGION }})
-
-            # 5. CREATE .env.production FILE (THE FIX for "Permission denied")
-            #    We use 'sudo tee' to write the file as the root user, bypassing permissions.
+            
             echo "Creating .env.production file..."
             echo "SECRET_KEY=${SECRET_KEY}" | sudo tee .env.production
             echo "DATABASE_URL=${DATABASE_URL}" | sudo tee -a .env.production
-
-            # 6. Stop and remove old containers (will work now)
+            
             echo "Stopping old containers..."
             docker compose down || true
-
-            # 7. Pull the new image (will work now)
+            
             echo "Pulling new image from ECR..."
             docker pull $ECR_REPO_URL_WITH_TAG
-
-            # 8. Start the new containers (will work now)
+            
             echo "Starting new containers..."
             docker compose up -d

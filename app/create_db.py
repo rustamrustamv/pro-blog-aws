@@ -1,7 +1,7 @@
 # create_db.py
 
-# We import the 'app' and 'db' objects from our main app.py file
-from app import app, db, User, bcrypt
+# We import the 'app', 'db', 'User', 'bcrypt' objects from our main app.py file
+from app.app import app, db, User, bcrypt
 
 # --- Function to Create Tables ---
 def create_tables():

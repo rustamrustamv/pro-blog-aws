@@ -2,7 +2,7 @@
 
 import os
 from dotenv import load_dotenv
-load_dotenv() # Load the .env file
+load_dotenv(os.path.join(os.path.dirname(__file__), '..', '.env')) # Load the .env file
 
 from flask import Flask, render_template, request, redirect, url_for, flash, abort
 from flask_sqlalchemy import SQLAlchemy
@@ -14,9 +14,20 @@ from wtforms.validators import DataRequired
 
 # --- App & Config Setup ---
 
-app = Flask(__name__)
+# Get the absolute path to the project root
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+
+app = Flask(__name__,
+            # --- THIS IS THE FIX ---
+            template_folder=os.path.join(project_root, 'client', 'templates'),
+            static_folder=os.path.join(project_root, 'client', 'static')
+            )
+
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY')
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
+# --- THIS IS THE FIX ---
+# Point to the correct database path (sqlite for local, postgres for prod)
+local_db_path = os.path.join(project_root, 'blog.db')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', f'sqlite:///{local_db_path}')
 
 # --- Database & Auth Setup ---
 

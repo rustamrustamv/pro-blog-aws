@@ -20,11 +20,12 @@ COPY requirements.txt .
 RUN pip install -r requirements.txt
 
 # 5. Copy the rest of your application code
-COPY . .
+COPY app/ ./app
+COPY client/ ./client
 
 
 # 6. Copy the entrypoint script and make it executable
-COPY entrypoint.sh .
+COPY deployment/entrypoint.sh .
 RUN chmod +x ./entrypoint.sh
 
 # 7. Set the entrypoint script as the command to run

@@ -3,10 +3,13 @@ venv/
 
 # Python cache
 __pycache__/
+app/__pycache__/
 *.pyc
 
-# Local environment variables
+# Environment variables
 .env
+.env.production
+.env.production.codedeploy
 
 # Local database file
 blog.db
@@ -14,15 +17,15 @@ blog.db
 # Terraform state files (contain secrets!)
 *.tfstate
 *.tfstate.*
-
-# Terraform secret variables
-*.tfvars
+terraform.tfvars
+terraform/terraform.tfvars
 
 # Terraform provider binaries
 .terraform/
+terraform/.terraform/
 
 # Node.js dependencies
 node_modules/
 
-# Crash logs
+# Crash log
 crash.log

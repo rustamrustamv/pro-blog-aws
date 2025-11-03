@@ -87,11 +87,15 @@ resource "aws_iam_role_policy_attachment" "ssm_policy" {
 
 # 4. Create the EC2 Instance
 resource "aws_instance" "blog_server" {
-  # Ubuntu 22.04 LTS in us-east-1
   ami           = "ami-053b0d53c279acc90"
-  instance_type = "t3.micro" # Free Tier
+  instance_type = "t3.micro" 
 
-  # Put it in our public subnet
+  # --- ADD THIS BLOCK ---
+  root_block_device {
+    volume_size = 20  # Give it 20 GB of space instead of the 8 GB default
+  }
+  # --- END OF NEW BLOCK ---
+
   subnet_id = aws_subnet.app_subnet_1.id
 
   # Assign our firewall

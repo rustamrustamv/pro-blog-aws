@@ -8,7 +8,7 @@ resource "random_password" "flask_secret_key" {
 
 # 2. Store that random key in AWS Secrets Manager
 resource "aws_secretsmanager_secret" "secret_key" {
-  name = "pro-blog/secret-key-v2"
+  name = "pro-blog/secret-key-v3"
 }
 
 resource "aws_secretsmanager_secret_version" "secret_key_version" {
@@ -18,7 +18,7 @@ resource "aws_secretsmanager_secret_version" "secret_key_version" {
 
 # 3. Store our fully-formed DATABASE_URL in AWS Secrets Manager
 resource "aws_secretsmanager_secret" "database_url" {
-  name = "pro-blog/database-url-v2"
+  name = "pro-blog/database-url-v3"
 }
 
 resource "aws_secretsmanager_secret_version" "database_url_version" {

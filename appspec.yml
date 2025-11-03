@@ -1,46 +1,15 @@
-# appspec.yml
+# appspec.yml (Simple Version)
 version: 0.0
 os: linux
-...
-...
+
 files:
   - source: /
     destination: /home/ubuntu/pro-blog-aws
     overwrite: true
 
-permissions:
-  - object: /home/ubuntu/pro-blog-aws
-    owner: ubuntu
-    group: ubuntu
-    mode: 755
-    type:
-      - directory
-  - object: /home/ubuntu/pro-blog-aws
-    owner: ubuntu
-    group: ubuntu
-    mode: 644
-    type:
-      - file
-  - object: /home/ubuntu/pro-blog-aws/scripts
-    owner: ubuntu
-    group: ubuntu
-    mode: 755
-    type:
-      - directory
-  - object: /home/ubuntu/pro-blog-aws/scripts
-    pattern: "**"
-    owner: ubuntu
-    group: ubuntu
-    mode: 755
-    type:
-      - file
-
 hooks:
+  # Run our ONE script after the files are copied
   ApplicationStart:
-    - location: scripts/application_start.sh
-      timeout: 300
-      runas: ubuntu
-  ValidateService:
-    - location: scripts/validate_service.sh
-      timeout: 60
+    - location: scripts/simple_deploy.sh
+      timeout: 600
       runas: ubuntu

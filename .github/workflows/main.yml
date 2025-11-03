@@ -66,15 +66,19 @@ jobs:
           target: "/home/ubuntu/pro-blog-aws"
 
 
-        # install AWS CLI and Docker on the EC2 instance
       - name: Install AWS CLI and Docker
-        run: |
-          sudo apt-get update -y
-          sudo apt-get install -y unzip curl docker.io docker-compose-plugin
-          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-          unzip awscliv2.zip
-          sudo ./aws/install
-          sudo usermod -aG docker ubuntu
+        uses: appleboy/ssh-action@v1.0.3 # We use the SSH action to run these commands on the EC2 server
+        with:
+          host: ${{ env.EC2_SERVER_IP }}
+          username: ${{ env.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            # 1. Update and Install Docker Compose (using the simpler name)
+            sudo apt-get update -y
+            sudo apt-get install -y awscli docker-compose
+
+            # 2. Add ubuntu user to docker group (required for execution)
+            sudo usermod -aG docker ubuntu || true
 
 
       # 6. Deploy to EC2 by running the script
@@ -84,20 +88,29 @@ jobs:
           host: ${{ env.EC2_SERVER_IP }}
           username: ${{ env.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          # This script is unchanged and should work
           script: |
+            # --- PRE-DEPLOYMENT SETUP (REQUIRED ON NEW SERVER) ---
+            echo "--- Installing Dependencies on EC2 ---"
+            sudo apt-get update -y
+            sudo apt-get install -y awscli jq docker.io docker-compose-plugin
+
+            # Add user to docker group
+            sudo usermod -aG docker ubuntu || true
+
+            # --- START DEPLOYMENT SCRIPT ---
             export ECR_REPO_URL_WITH_TAG=${{ steps.build-image.outputs.IMAGE_URI }}
             export APP_DIR="/home/ubuntu/pro-blog-aws"
             export ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
-            
+
             cd $APP_DIR
-            
+
             echo "Fixing directory permissions..."
             sudo chown -R $EC2_USERNAME:$EC2_USERNAME .
-            
+
             echo "Logging in to ECR on the server..."
+            # Now these commands will work
             aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin $ECR_REGISTRY
-            
+
             echo "Fetching secrets from AWS..."
             SECRET_KEY=$(aws secretsmanager get-secret-value --secret-id pro-blog/secret-key-v3 --query SecretString --output text --region ${{ env.AWS_REGION }})
             DATABASE_URL=$(aws secretsmanager get-secret-value --secret-id pro-blog/database-url-v3 --query SecretString --output text --region ${{ env.AWS_REGION }})
@@ -105,12 +118,12 @@ jobs:
             echo "Creating .env.production file..."
             echo "SECRET_KEY=${SECRET_KEY}" | sudo tee .env.production
             echo "DATABASE_URL=${DATABASE_URL}" | sudo tee -a .env.production
-            
+
             echo "Stopping old containers..."
             docker compose down || true
-            
+
             echo "Pulling new image from ECR..."
             docker pull $ECR_REPO_URL_WITH_TAG
-            
+
             echo "Starting new containers..."
             docker compose up -d

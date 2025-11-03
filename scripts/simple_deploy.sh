@@ -12,31 +12,31 @@ echo "--- Starting Deployment ---"
 cd /home/ubuntu/pro-blog-aws || exit 1
 echo "Navigated to /home/ubuntu/pro-blog-aws"
 
-# --- 3. STOP OLD CONTAINERS ---
+# --- 3. LOAD IMAGE URL ---
+# Load the new ECR image URL from the artifact
+source .env.production.codedeploy
+export ECR_REPO_URL_WITH_TAG
+
+# --- 4. STOP OLD CONTAINERS ---
 # We use 'docker compose' (with a space)
 echo "Stopping old containers..."
 docker compose down
 
-# --- 4. INSTALL DEPENDENCIES ---
+# --- 5. INSTALL DEPENDENCIES ---
 # The server needs awscli. We'll run this every time.
 echo "Installing awscli..."
 sudo apt-get update -y
 sudo apt-get install -y awscli
 
-# --- 5. GET SECRETS ---
+# --- 6. GET SECRETS ---
 echo "Fetching secrets from AWS..."
 SECRET_KEY=$(aws secretsmanager get-secret-value --secret-id pro-blog/secret-key-v2 --query SecretString --output text --region us-east-1)
 DATABASE_URL=$(aws secretsmanager get-secret-value --secret-id pro-blog/database-url-v2 --query SecretString --output text --region us-east-1)
 
-# --- 6. CREATE .env FILE ---
+# --- 7. CREATE .env FILE ---
 echo "Creating .env.production file..."
 echo "SECRET_KEY=${SECRET_KEY}" > .env.production
 echo "DATABASE_URL=${DATABASE_URL}" >> .env.production
-
-# --- 7. LOAD IMAGE URL ---
-# Load the new ECR image URL from the artifact
-source .env.production.codedeploy
-export ECR_REPO_URL_WITH_TAG
 
 # --- 8. START NEW CONTAINERS ---
 echo "Starting new containers with docker compose..."

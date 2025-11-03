@@ -92,18 +92,18 @@ jobs:
 
           echo "IMAGE_URI_NGINX=$ECR_REGISTRY/$ECR_REPOSITORY_NGINX:$IMAGE_TAG" >> "$GITHUB_OUTPUT"
 
-      # 6) Copy prod compose to EC2 and rename on the fly
+      # 6) Copy prod compose to EC2 (+ nginx.conf); drop "deployment/" prefix
       - name: Copy compose to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ env.EC2_SERVER_IP }}
           username: ${{ env.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          source: "deployment/docker-compose.prod.yml:docker-compose.yml"
+          source: "deployment/docker-compose.prod.yml,deployment/nginx.conf"
           target: "/home/ubuntu/pro-blog-aws"
           strip_components: 1
 
-      # 7) Prepare EC2 (idempotent install of AWS CLI v2, Docker, Compose v2)
+      # 7) Prepare EC2 (idempotent install of AWS CLI v2, Docker, Compose v2) + rename compose
       - name: Prepare EC2 (AWS CLI, Docker, Compose v2)
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -112,6 +112,16 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             set -euo pipefail
+            cd /home/ubuntu/pro-blog-aws
+
+            # Rename prod compose to default name for docker compose
+            if [ -f docker-compose.prod.yml ]; then
+              mv -f docker-compose.prod.yml docker-compose.yml
+            else
+              echo "ERROR: docker-compose.prod.yml not found in /home/ubuntu/pro-blog-aws"
+              ls -la
+              exit 1
+            fi
 
             # AWS CLI v2
             if ! command -v aws >/dev/null 2>&1; then
@@ -194,6 +204,7 @@ jobs:
             echo "Pull latest images..."
             sudo docker pull "$ECR_REPO_URL_WITH_TAG"   # app
             sudo docker pull "$NGINX_IMAGE_URI"         # nginx
+
             echo "Up new stack..."
             sudo docker compose up --detach
 

@@ -4,18 +4,38 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Wellness Journal</title>
-    <link href="{{ url_for('static', filename='styles.css') }}" rel="v class="bg-white shadow-md">
-    <div class="max-w-4xl mx-auto px-4 flex justify-between items-center h-16">
-        <a href="{{ url_for('index') }}" class="text-2xl font-boldpace-x-4">
+    {{ url_for('static', filename='styles.css') }}
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+<!-- ✅ Navigation -->
+<nav class="bg-white shadow-md">
+    <div class="max-w-6xl mx-auto px-4 flex justify-between items-center h-16">
+        <a href="{{ url_for('index') }}" class="text-2xl font-bold text-green-600">Wellness Journal</a>
+        <div class="space-x-4">
             <a href="{{ url_for('index') }}" class="hover:text-green-600">Home</a>
-"hover:text-green-600">About</a>
- if current_user.is_authenticated %}
-                <a href="{{ url_for('admin') }}" class="href="{{ url_for('logout') }}" class="hover:text-green-   <a href="{{ url_for('login') }}" class="f %}
+            <a href="{{ url_for('about') }}" class="text-gray-600 hover:text-green-600">About</a>
+            {% if current_user.is_authenticated %}
+                <a href="{{ url_for('admin') }}" class="text-gray-600 hover:text-green-600">Admin</a>
+                <a href="{{ url_for('logout') }}" class="text-gray-600 hover:text-green-600">Logout</a>
+            {% else %}
+                <a href="{{ url_for('login') }}" class="text-gray-600 hover:text-green-600">Login</a>
+            {% endif %}
         </div>
     </div>
 </nav>
 
-<main class="max-w-4xl mx-auto mt-8 p-4">
+<!-- ✅ Main Content -->
+<main class="max-w-6xl mx-auto mt-8 p-4">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="px-4 py-2 rounded mb-4 {{ 'bg-green-200 text-green-800' if category == 'success' else 'bg-red-200 text-red-800' }}" role="alert">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
     {% block content %}{% endblock %}
 </main>
 

@@ -29,3 +29,6 @@ node_modules/
 
 # Crash log
 crash.log
+
+# Ignore locally generated CSS
+client/static/output.css

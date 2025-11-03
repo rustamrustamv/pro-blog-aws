@@ -42,20 +42,15 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          # A. Build the Tailwind CSS (uses new paths from package.json)
-          echo "Building Tailwind CSS..."
-          npm install
-          npm run build:css
-          
-          # B. Build the Docker image (points to the refactored Dockerfile)
+          # A. Build the Docker image (it now builds CSS inside)
           echo "Building Docker image..."
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f deployment/Dockerfile .
-          
-          # C. Push the Docker image
+
+          # B. Push the Docker image
           echo "Pushing Docker image..."
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-          
-          # D. Output the full image URI for the deploy step
+
+          # C. Output the full image URI for the deploy step
           echo "IMAGE_URI=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
       # 5. Copy configuration files to the EC2 server

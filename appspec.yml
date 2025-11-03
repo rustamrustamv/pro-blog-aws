@@ -16,21 +16,21 @@ permissions:
     mode: 755     # Give 755 (execute) to the root folder
     type:
       - directory
-
+      
   - object: /home/ubuntu/pro-blog-aws
     owner: ubuntu
     group: ubuntu
     mode: 644     # Give 644 (read) to all files
     type:
       - file
-
+      
   - object: /home/ubuntu/pro-blog-aws/scripts
     owner: ubuntu
     group: ubuntu
     mode: 755     # Give 755 (execute) to the scripts folder
     type:
       - directory
-
+      
   - object: /home/ubuntu/pro-blog-aws/scripts
     pattern: "**"
     owner: ubuntu
@@ -41,10 +41,13 @@ permissions:
 
 # 3. Define the "hooks" (scripts) to run at each stage of deployment
 hooks:
-  ApplicationStop:
-    - location: scripts/application_stop.sh
+  # THIS IS THE MOST IMPORTANT HOOK THAT WAS MISSING
+  ApplicationStart:
+    - location: scripts/application_start.sh
       timeout: 300
       runas: ubuntu
+      
+  # This hook validates that the ApplicationStart script worked
   ValidateService:
     - location: scripts/validate_service.sh
       timeout: 60

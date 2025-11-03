@@ -5,15 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Wellness Journal</title>
     {{ url_for(
+    <link href="https://cdn.jsdelivrlwindcss@2.2.19/dist/tailwind.min.css
 </head>
 <body class="bg-gray-100 text-gray-800">
 
 <!-- ✅ Navigation -->
 <nav class="bg-white shadow-md">
     <div class="max-w-6xl mx-auto px-4 flex justify-between items-center h-16">
-        <a href="{{ url_for('index') }}" class="text-2xl font-bold text-green-600">Wellness href="{{ url_for('index') }}" class="text-gray-r('about') }}" classef="{{ url_for('resources') }}" class="text-grayer.is_authenticated %}
-                <a hreffor(Admin</a>
-                <a href="{{ url_for('logout') }}" class="text-gray-600 hover:text-green-600l_for('login') }}" class="f %}
+        <a href="{{ url_for('index')/a>
+        <div class="flex space-x-4">
+            {{ url_for(Home</a>
+            {{ url_for(About</a>
+            <a url_for(Resources</a>
+            {% if current_user.is_authenticated %}
+                {{ url_for(Admin</a>
+                <a href="{{ urlut</a>
+            {% else %}
+                <a href="{{ url_for('login') }}" class="f %}
         </div>
     </div>
 </nav>

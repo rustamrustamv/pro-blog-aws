@@ -1,0 +1,21 @@
+# Production compose — no server-side builds
+services:
+  blog-app:
+    # App image built & pushed by CI; injected at deploy time
+    image: ${ECR_REPO_URL_WITH_TAG}
+    container_name: blog-app
+    restart: always
+    env_file:
+      - ./.env           # created during deploy
+    expose:
+      - "5000"
+
+  nginx:
+    # NGINX image built & pushed by CI; contains nginx.conf + static assets
+    image: ${NGINX_IMAGE_URI}
+    container_name: nginx-proxy
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - blog-app

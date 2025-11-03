@@ -6,20 +6,46 @@ on:
 
 env:
   AWS_REGION: ${{ secrets.AWS_REGION }}
-  ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY_NAME }}
+  ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY_NAME }}           # app repo
+  ECR_REPOSITORY_NGINX: ${{ secrets.ECR_REPOSITORY_NGINX }}    # nginx repo
   EC2_SERVER_IP: ${{ secrets.EC2_SERVER_IP }}
   EC2_USERNAME: ubuntu
-
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      # 1) Checkout
+      # 0) Checkout
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 2) AWS creds on runner (for ECR push)
+      # 1) Build frontend (Tailwind) so client/static exists for nginx image
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Build frontend assets
+        working-directory: client
+        run: |
+          set -euo pipefail
+          if [ -f package-lock.json ] || [ -f pnpm-lock.yaml ] || [ -f yarn.lock ]; then
+            if [ -f package-lock.json ]; then
+              npm ci
+            else
+              npm install
+            fi
+          else
+            npm install
+          fi
+          # Adjust to your Tailwind build script
+          npm run build
+
+          # Ensure build output exists at client/static (adjust if your build outputs somewhere else)
+          # If your build outputs to "dist" or "build", change this accordingly and update nginx.Dockerfile COPY path.
+          test -d static || { echo "ERROR: expected 'client/static' after build. Adjust nginx.Dockerfile COPY path or build output."; ls -la; exit 1; }
+
+      # 2) Configure AWS credentials on runner (for ECR push)
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -32,34 +58,46 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      # 4) Build & push image
-      - name: Build, tag, and push image
-        id: build-image
+      # 4) Build & push APP image
+      - name: Build, tag, and push APP image
+        id: build-image-app
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
           set -euo pipefail
-          echo "Building Docker image..."
+          echo "Building APP image..."
           docker build -t "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" -f deployment/Dockerfile .
-
-          echo "Pushing Docker image..."
+          echo "Pushing APP image..."
           docker push "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+          echo "IMAGE_URI_APP=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> "$GITHUB_OUTPUT"
 
-          # IMPORTANT: proper append redirection (not HTML-escaped)
-          echo "IMAGE_URI=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> "$GITHUB_OUTPUT"
+      # 5) Build & push NGINX image (contains nginx.conf + static assets)
+      - name: Build, tag, and push NGINX image
+        id: build-image-nginx
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          echo "Building NGINX image..."
+          docker build -t "$ECR_REGISTRY/$ECR_REPOSITORY_NGINX:$IMAGE_TAG" -f deployment/nginx.Dockerfile .
+          echo "Pushing NGINX image..."
+          docker push "$ECR_REGISTRY/$ECR_REPOSITORY_NGINX:$IMAGE_TAG"
+          echo "IMAGE_URI_NGINX=$ECR_REGISTRY/$ECR_REPOSITORY_NGINX:$IMAGE_TAG" >> "$GITHUB_OUTPUT"
 
-      # 5) Copy compose/nginx to EC2 (strip 'deployment/' so files land in app root)
-      - name: Copy files to EC2
+      # 6) Copy prod compose to EC2 and rename on the fly
+      - name: Copy compose to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ env.EC2_SERVER_IP }}
           username: ${{ env.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          source: "deployment/docker-compose.yml,deployment/nginx.conf"
+          source: "deployment/docker-compose.prod.yml:docker-compose.yml"
           target: "/home/ubuntu/pro-blog-aws"
-          strip_components: 1   # <--- this is the key change
-      # 6) Prepare EC2 (idempotent install of AWS CLI v2, Docker, Compose v2)
+          strip_components: 1
+
+      # 7) Prepare EC2 (idempotent install of AWS CLI v2, Docker, Compose v2)
       - name: Prepare EC2 (AWS CLI, Docker, Compose v2)
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -98,17 +136,18 @@ jobs:
               sudo curl -fsSL "$URL" -o /usr/lib/docker/cli-plugins/docker-compose
               sudo chmod +x /usr/lib/docker/cli-plugins/docker-compose
             fi
+            docker compose version || true
 
             # Ensure directory and ownership
             sudo mkdir -p /home/ubuntu/pro-blog-aws
             sudo chown -R ubuntu:ubuntu /home/ubuntu/pro-blog-aws
 
-            # (Optional) put ubuntu into docker group for future sessions
+            # (Optional) add ubuntu to docker group for future logins
             if ! id -nG ubuntu | grep -qw docker; then
               sudo usermod -aG docker ubuntu
             fi
 
-      # 7) Deploy to EC2
+      # 8) Deploy to EC2
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -117,36 +156,41 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             set -euo pipefail
-            export ECR_REPO_URL_WITH_TAG='${{ steps.build-image.outputs.IMAGE_URI }}'
             export APP_DIR="/home/ubuntu/pro-blog-aws"
             export ECR_REGISTRY='${{ steps.login-ecr.outputs.registry }}'
             export AWS_REGION='${{ env.AWS_REGION }}'
+            export ECR_REPO_URL_WITH_TAG='${{ steps.build-image-app.outputs.IMAGE_URI_APP }}'
+            export NGINX_IMAGE_URI='${{ steps.build-image-nginx.outputs.IMAGE_URI_NGINX }}'
 
             cd "$APP_DIR"
 
-            echo "Sanity check (expect docker-compose.yml here):"
+            echo "Sanity check (docker-compose.yml present?):"
             ls -la .
             test -f docker-compose.yml || { echo "docker-compose.yml not found in $APP_DIR"; exit 1; }
 
             echo "Login to ECR on the server..."
             aws ecr get-login-password --region "$AWS_REGION" | sudo docker login --username AWS --password-stdin "$ECR_REGISTRY"
 
-            echo "Fetch secrets from AWS..."
+            echo "Fetch app secrets..."
             SECRET_KEY=$(aws secretsmanager get-secret-value --secret-id pro-blog/secret-key-v3 --query SecretString --output text --region "$AWS_REGION")
             DATABASE_URL=$(aws secretsmanager get-secret-value --secret-id pro-blog/database-url-v3 --query SecretString --output text --region "$AWS_REGION")
 
-            echo "Write .env.production (quiet)..."
+            echo "Write .env.production and secure .env..."
             sudo sh -c 'cat > .env.production <<EOF
             SECRET_KEY='"$SECRET_KEY"'
             DATABASE_URL='"$DATABASE_URL"'
             EOF'
+            sudo install -m 600 .env.production .env
 
             echo "Down old stack..."
             sudo docker compose down --remove-orphans || true
 
-            echo "Pull new image..."
-            sudo docker pull "$ECR_REPO_URL_WITH_TAG"
+            echo "Pull latest images..."
+            sudo docker pull "$ECR_REPO_URL_WITH_TAG"   # app
+            sudo docker pull "$NGINX_IMAGE_URI"         # nginx
 
             echo "Up new stack..."
             sudo docker compose up --detach
-            echo "Deploy complete."
+
+            echo "Deployment complete. Services:"
+            sudo docker compose ps

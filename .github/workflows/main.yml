@@ -2,7 +2,6 @@
 
 name: Deploy Pro Blog to AWS
 
-# 1. Trigger this workflow on every push to the 'main' branch
 on:
   push:
     branches:
@@ -13,11 +12,11 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      # 2. Check out the repository code
+      # 1. Check out the repository code
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 3. Configure AWS credentials
+      # 2. Configure AWS credentials
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -25,19 +24,21 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      # 4. Log in to Amazon ECR
+      # 3. Log in to Amazon ECR
+      #    This step is now fixed: no inputs are needed.
+      #    It logs in and outputs the registry URL.
       - name: Log in to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
-        with:
-          registry-uris: ${{ secrets.ECR_REPO_URL }}
 
-      # 5. Build, tag, and push Docker image to ECR
+      # 4. Build, tag, and push Docker image to ECR
       - name: Build, tag, and push image to ECR
         env:
+          # Get the registry URL from the output of the login-ecr step
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          ECR_REPOSITORY: ${{ secrets.ECR_REPO_URL }}
-          IMAGE_TAG: ${{ github.sha }}
+          # Get the repository NAME from our new GitHub secret
+          ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY_NAME }}
+          IMAGE_TAG: ${{ github.sha }} # Use the commit SHA as the tag
         run: |
           # A. Build the Tailwind CSS
           echo "Building Tailwind CSS..."
@@ -52,7 +53,7 @@ jobs:
           echo "Pushing Docker image..."
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
-      # 6. Create a new deployment in CodeDeploy
+      # 5. Create a new deployment in CodeDeploy
       - name: Create new CodeDeploy deployment
         id: deploy
         run: |

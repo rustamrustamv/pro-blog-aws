@@ -6,6 +6,8 @@ services:
     build:
       context: ..         # Build from the root project folder
       dockerfile: deployment/Dockerfile # Point to our Dockerfile
+    # The 'image' tag is set by our CI/CD pipeline
+    # We will pass it in as an environment variable
     image: ${ECR_REPO_URL_WITH_TAG}
     container_name: blog-app
     restart: always
@@ -22,7 +24,7 @@ services:
     ports:
       - "80:80"
     volumes:
-      # Nginx.conf is in the same folder as this compose file
+      # Nginx.conf is in the same folder
       - ./nginx.conf:/etc/nginx/conf.d/default.conf
     depends_on:
       - blog-app

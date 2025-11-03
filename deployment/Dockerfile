@@ -1,32 +1,26 @@
-# Dockerfile
+# deployment/Dockerfile
 
-# 1. Base Image: Start with an official, slim Python image
+# --- 1. Base Image ---
 FROM python:3.11-slim
 
-# 2. Set the working directory inside the container
+# --- 2. Set Workdir & Install Dependencies ---
 WORKDIR /app
-
-# 3. Install build-time dependencies (for psycopg2)
-# We install these separately so they can be cached
 RUN apt-get update && apt-get install -y \
     build-essential \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# 4. Copy the requirements file and install packages
-# This is done *before* copying the rest of the app
-# so Docker can cache this layer.
+# --- 3. Install Python Packages ---
+# Copy *only* the requirements file first to cache this layer
 COPY requirements.txt .
 RUN pip install -r requirements.txt
 
-# 5. Copy the rest of your application code
-COPY app/ ./app
-COPY client/ ./client
+# --- 4. Copy ALL Project Files ---
+# Copy the app, client, deployment folders, etc.
+COPY . .
 
+# --- 5. Make Entrypoint Executable ---
+RUN chmod +x /app/deployment/entrypoint.sh
 
-# 6. Copy the entrypoint script and make it executable
-COPY deployment/entrypoint.sh .
-RUN chmod +x ./entrypoint.sh
-
-# 7. Set the entrypoint script as the command to run
-CMD ["./entrypoint.sh"]
+# --- 6. Set the Entrypoint ---
+CMD ["/app/deployment/entrypoint.sh"]

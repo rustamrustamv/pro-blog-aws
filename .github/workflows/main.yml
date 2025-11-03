@@ -192,21 +192,22 @@ jobs:
             SECRET_KEY=$(aws secretsmanager get-secret-value --secret-id pro-blog/secret-key-v3 --query SecretString --output text --region "$AWS_REGION")
             DATABASE_URL=$(aws secretsmanager get-secret-value --secret-id pro-blog/database-url-v3 --query SecretString --output text --region "$AWS_REGION")
 
-            echo "Write .env.production and secure .env..."
+            echo "Write .env.production..."
             sudo sh -c 'cat > .env.production <<EOF
             SECRET_KEY='"$SECRET_KEY"'
             DATABASE_URL='"$DATABASE_URL"'
             EOF'
-            sudo install -m 600 .env.production .env
 
-            # >>> NEW: add image variables to .env so Compose can substitute them
-            sudo tee -a .env >/dev/null <<EOF
+            echo "Install .env (owner ubuntu, mode 600)..."
+            sudo install -m 600 -o ubuntu -g ubuntu .env.production .env
+            echo "Append image variables to .env..."
+            cat <<EOF >> .env
             ECR_REPO_URL_WITH_TAG=$ECR_REPO_URL_WITH_TAG
             NGINX_IMAGE_URI=$NGINX_IMAGE_URI
             EOF
 
-            echo "Verify image variables are present in .env:"
-            grep -E '^(ECR_REPO_URL_WITH_TAG|NGINX_IMAGE_URI)=' .env || { echo "Missing image vars in .env"; exit 1; }
+            echo "Verify image variables in .env:"
+            sudo grep -E '^(ECR_REPO_URL_WITH_TAG|NGINX_IMAGE_URI)=' .env || { echo "Missing image vars in .env"; exit 1; }
 
             echo "Down old stack..."
             sudo docker compose down --remove-orphans || true
